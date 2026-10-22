@@ -30,13 +30,13 @@ __version__ = "0.1.0"
 
 __all__ = [
     "CoverageReport",
-    "RankReport",
     "EvalSpec",
     "OriginResult",
+    "RankReport",
     "decompose",
+    "evaluate_origin",
+    "load_spec",
     "oracle_coverage",
     "ranking_regret",
     "value_gain",
-    "load_spec",
-    "evaluate_origin",
 ]

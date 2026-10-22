@@ -13,10 +13,10 @@ from __future__ import annotations
 
 import math
 import random
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Optional, Sequence, Tuple
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass
 
-__all__ = ["BootstrapCI", "Aggregate", "bootstrap_ci", "classify", "aggregate"]
+__all__ = ["Aggregate", "BootstrapCI", "aggregate", "bootstrap_ci", "classify"]
 
 
 @dataclass(frozen=True)
@@ -27,7 +27,7 @@ class BootstrapCI:
     n: int
     resamples: int
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
@@ -46,7 +46,7 @@ class Aggregate:
     verdict: str
     mechanism: str
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
@@ -65,15 +65,15 @@ def bootstrap_ci(
         return BootstrapCI(mean=v, low=v, high=v, n=1, resamples=0)
     rng = random.Random(seed)
     n = len(data)
-    means: List[float] = []
+    means: list[float] = []
     for _ in range(resamples):
         total = 0.0
         for _ in range(n):
             total += data[rng.randrange(n)]
         means.append(total / n)
     means.sort()
-    lo_index = max(0, int(math.floor((alpha / 2.0) * resamples)) - 1)
-    hi_index = min(resamples - 1, int(math.ceil((1.0 - alpha / 2.0) * resamples)) - 1)
+    lo_index = max(0, math.floor((alpha / 2.0) * resamples) - 1)
+    hi_index = min(resamples - 1, math.ceil((1.0 - alpha / 2.0) * resamples) - 1)
     return BootstrapCI(
         mean=sum(data) / n,
         low=means[lo_index],
@@ -83,7 +83,7 @@ def bootstrap_ci(
     )
 
 
-def classify(gain: BootstrapCI, opportunity: BootstrapCI, regret: BootstrapCI) -> Tuple[str, str]:
+def classify(gain: BootstrapCI, opportunity: BootstrapCI, regret: BootstrapCI) -> tuple[str, str]:
     """Return ``(verdict, mechanism)``.
 
     verdict
@@ -121,7 +121,8 @@ def aggregate(results: Sequence[object], resamples: int = 10_000, seed: int = 0)
     gains = [r.coverage.value_gain for r in results]  # type: ignore[attr-defined]
     hits = [1.0 if r.coverage.top1_hit else 0.0 for r in results]  # type: ignore[attr-defined]
     concordances = [
-        r.ranking.pairwise_concordance for r in results  # type: ignore[attr-defined]
+        r.ranking.pairwise_concordance
+        for r in results  # type: ignore[attr-defined]
         if r.ranking.pairwise_concordance == r.ranking.pairwise_concordance  # type: ignore[attr-defined]
     ]
     opportunity_ci = bootstrap_ci(opportunities, resamples=resamples, seed=seed)
@@ -137,7 +138,9 @@ def aggregate(results: Sequence[object], resamples: int = 10_000, seed: int = 0)
         value_gain=gain_ci,
         top1_rate=hit_ci,
         random_top1_rate=results[0].coverage.random_top1_rate,  # type: ignore[attr-defined]
-        mean_pairwise_concordance=(sum(concordances) / len(concordances)) if concordances else float("nan"),
+        mean_pairwise_concordance=(sum(concordances) / len(concordances))
+        if concordances
+        else float("nan"),
         verdict=verdict,
         mechanism=mechanism,
     )

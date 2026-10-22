@@ -25,6 +25,7 @@ So every candidate match is classified by the *shape of the value*:
 Only the last category is reported. Report output never contains the secret
 itself, only a stable sha256 fingerprint, so a report can be pasted into a PR.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -45,74 +46,238 @@ TOKEN_RULES: list[tuple[str, re.Pattern[str]]] = [
     ("openai_key", re.compile(r"\bsk-(?!your\b|proj-|ant-)[A-Za-z0-9_\-]{24,}")),
     ("anthropic_key", re.compile(r"\bsk-ant-[A-Za-z0-9_\-]{24,}")),
     ("aws_access_key_id", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
-    ("aws_secret_key", re.compile(r"(?i)aws_secret_access_key\s*[:=]\s*[\"']?([A-Za-z0-9/+=]{40})[\"']?")),
+    (
+        "aws_secret_key",
+        re.compile(r"(?i)aws_secret_access_key\s*[:=]\s*[\"']?([A-Za-z0-9/+=]{40})[\"']?"),
+    ),
     ("google_api_key", re.compile(r"\bAIza[0-9A-Za-z_\-]{35}\b")),
     ("slack_token", re.compile(r"\bxox[baprs]-[0-9A-Za-z\-]{10,}")),
-    ("bearer_token", re.compile(r"(?i)\bauthorization\s*[:=]\s*[\"']?bearer\s+[A-Za-z0-9._\-]{20,}")),
-    ("connection_uri_creds", re.compile(
-        r"(?i)\b(?:postgres|postgresql|mysql|mongodb(?:\+srv)?|redis|amqp)://[^\s:@/]+:[^\s:@/]+@")),
+    (
+        "bearer_token",
+        re.compile(r"(?i)\bauthorization\s*[:=]\s*[\"']?bearer\s+[A-Za-z0-9._\-]{20,}"),
+    ),
+    (
+        "connection_uri_creds",
+        re.compile(
+            r"(?i)\b(?:postgres|postgresql|mysql|mongodb(?:\+srv)?|redis|amqp)://[^\s:@/]+:[^\s:@/]+@"
+        ),
+    ),
 ]
 
 # Assignment-style rules. The captured group is the VALUE; it is then classified.
 ASSIGN_RULES: list[tuple[str, re.Pattern[str]]] = [
-    ("assigned_secret", re.compile(
-        r"(?i)\b(?:api[_\-]?key|secret[_\-]?key|access[_\-]?token|refresh[_\-]?token|"
-        r"app[_\-]?secret|app[_\-]?id|webhook[_\-]?url|passwd|password|passphrase|"
-        r"private[_\-]?key|client[_\-]?secret)\b\s*[:=]\s*[\"']?([^\s\"'#,}]{8,})[\"']?")),
-    ("feishu_secret", re.compile(
-        r"(?i)\bFEISHU_APP_SECRET\s*[:=]\s*[\"']?([A-Za-z0-9]{16,})[\"']?")),
+    (
+        "assigned_secret",
+        re.compile(
+            r"(?i)\b(?:api[_\-]?key|secret[_\-]?key|access[_\-]?token|refresh[_\-]?token|"
+            r"app[_\-]?secret|app[_\-]?id|webhook[_\-]?url|passwd|password|passphrase|"
+            r"private[_\-]?key|client[_\-]?secret)\b\s*[:=]\s*[\"']?([^\s\"'#,}]{8,})[\"']?"
+        ),
+    ),
+    (
+        "feishu_secret",
+        re.compile(r"(?i)\bFEISHU_APP_SECRET\s*[:=]\s*[\"']?([A-Za-z0-9]{16,})[\"']?"),
+    ),
 ]
 
 # Keys whose *name* implies the value is a secret even without a known format.
 SECRET_NAME_RE = re.compile(
-    r"(?i)\b(api[_\-]?key|secret|token|password|passwd|passphrase|credential|private[_\-]?key)\b")
+    r"(?i)\b(api[_\-]?key|secret|token|password|passwd|passphrase|credential|private[_\-]?key)\b"
+)
 
 FORBIDDEN_NAMES = [
-    ".env", ".env.local", ".env.production", ".env.staging", ".env.development",
-    "credentials.json", "credentials.yaml", "secrets.json", "secrets.yaml",
-    "id_rsa", "id_ed25519", "id_ecdsa", "id_train", "id_train.pub",
-    "zcode-network-ca.key", ".netrc", ".npmrc", "service-account.json",
-    "known_hosts", "auth.json", "token.json",
+    ".env",
+    ".env.local",
+    ".env.production",
+    ".env.staging",
+    ".env.development",
+    "credentials.json",
+    "credentials.yaml",
+    "secrets.json",
+    "secrets.yaml",
+    "id_rsa",
+    "id_ed25519",
+    "id_ecdsa",
+    "id_train",
+    "id_train.pub",
+    "zcode-network-ca.key",
+    ".netrc",
+    ".npmrc",
+    "service-account.json",
+    "known_hosts",
+    "auth.json",
+    "token.json",
 ]
 FORBIDDEN_GLOBS = [
-    "*.pem", "*.key", "*.p12", "*.pfx", "*.keystore", "*.jks",
-    "*.sqlite", "*.sqlite3", "*.db",
-    "*.ckpt", "*.safetensors", "*.pth", "*.pt", "*.onnx", "*.engine",
-    "*.npz", "*.npy", "*.h5", "*.hdf5", "*.parquet", "*.arrow",
-    "*.tar", "*.tar.gz", "*.tgz", "*.zip", "*.7z", "*.rar",
-    ".env.*", "*.log", "*.pid", "*.secret",
+    "*.pem",
+    "*.key",
+    "*.p12",
+    "*.pfx",
+    "*.keystore",
+    "*.jks",
+    "*.sqlite",
+    "*.sqlite3",
+    "*.db",
+    "*.ckpt",
+    "*.safetensors",
+    "*.pth",
+    "*.pt",
+    "*.onnx",
+    "*.engine",
+    "*.npz",
+    "*.npy",
+    "*.h5",
+    "*.hdf5",
+    "*.parquet",
+    "*.arrow",
+    "*.tar",
+    "*.tar.gz",
+    "*.tgz",
+    "*.zip",
+    "*.7z",
+    "*.rar",
+    ".env.*",
+    "*.log",
+    "*.pid",
+    "*.secret",
 ]
 FORBIDDEN_DIRS = {
-    ".git", ".venv", "venv", "env", "node_modules", "__pycache__",
-    ".pytest_cache", ".mypy_cache", ".ruff_cache", "dist", "build",
-    ".idea", ".vscode", "wandb", "outputs", "artifacts", "results",
-    "runs", "logs", "checkpoints", "data", "datasets", "weights",
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "node_modules",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "dist",
+    "build",
+    ".idea",
+    ".vscode",
+    "wandb",
+    "outputs",
+    "artifacts",
+    "results",
+    "runs",
+    "logs",
+    "checkpoints",
+    "data",
+    "datasets",
+    "weights",
 }
 
 TEXT_SUFFIXES = {
-    ".py", ".md", ".txt", ".json", ".yaml", ".yml", ".toml", ".cfg", ".ini",
-    ".sh", ".bash", ".zsh", ".ps1", ".js", ".ts", ".tsx", ".jsx", ".vue",
-    ".html", ".css", ".scss", ".xml", ".sql", ".rst", ".ipynb", ".lock",
-    ".example", ".env", ".in", ".gitignore", ".gitattributes", ".editorconfig",
-    ".c", ".h", ".cpp", ".rs", ".go", ".java", ".m", ".mm",
+    ".py",
+    ".md",
+    ".txt",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".cfg",
+    ".ini",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".ps1",
+    ".js",
+    ".ts",
+    ".tsx",
+    ".jsx",
+    ".vue",
+    ".html",
+    ".css",
+    ".scss",
+    ".xml",
+    ".sql",
+    ".rst",
+    ".ipynb",
+    ".lock",
+    ".example",
+    ".env",
+    ".in",
+    ".gitignore",
+    ".gitattributes",
+    ".editorconfig",
+    ".c",
+    ".h",
+    ".cpp",
+    ".rs",
+    ".go",
+    ".java",
+    ".m",
+    ".mm",
 }
 BINARY_SKIP = {
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico", ".pdf", ".mp4", ".mp3",
-    ".wav", ".zip", ".gz", ".bz2", ".xz", ".7z", ".rar", ".so", ".dll",
-    ".dylib", ".exe", ".bin", ".onnx", ".safetensors", ".pt", ".pth", ".npz",
-    ".npy", ".h5", ".parquet", ".ttf", ".otf", ".woff", ".woff2",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".webp",
+    ".ico",
+    ".pdf",
+    ".mp4",
+    ".mp3",
+    ".wav",
+    ".zip",
+    ".gz",
+    ".bz2",
+    ".xz",
+    ".7z",
+    ".rar",
+    ".so",
+    ".dll",
+    ".dylib",
+    ".exe",
+    ".bin",
+    ".onnx",
+    ".safetensors",
+    ".pt",
+    ".pth",
+    ".npz",
+    ".npy",
+    ".h5",
+    ".parquet",
+    ".ttf",
+    ".otf",
+    ".woff",
+    ".woff2",
 }
 TEXT_FILE_SCAN_MAX_BYTES = 4_000_000
 
 PLACEHOLDER_WORDS = (
-    "your", "example", "placeholder", "changeme", "change-me", "change_me",
-    "dummy", "fake", "sample", "demo", "test", "todo", "none", "null",
-    "xxx", "abc123", "secret", "redacted", "masked", "<", ">", "...",
+    "your",
+    "example",
+    "placeholder",
+    "changeme",
+    "change-me",
+    "change_me",
+    "dummy",
+    "fake",
+    "sample",
+    "demo",
+    "test",
+    "todo",
+    "none",
+    "null",
+    "xxx",
+    "abc123",
+    "secret",
+    "redacted",
+    "masked",
+    "<",
+    ">",
+    "...",
 )
-PLACEHOLDER_RE = re.compile(r"(?i)(your|example|placeholder|changeme|dummy|fake|sample|demo|xxxx|redacted|\.\.\.)")
+PLACEHOLDER_RE = re.compile(
+    r"(?i)(your|example|placeholder|changeme|dummy|fake|sample|demo|xxxx|redacted|\.\.\.)"
+)
 IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 ENV_REF_RE = re.compile(r"^(\$\{|\$[A-Za-z_]|<[A-Za-z_]|\{\{)")
-EXPRESSION_RE = re.compile(r"(\(|\)|\[|\]|\{|\}|=>|::|\.get\(|\.environ|os\.getenv|process\.env|config\.)")
+EXPRESSION_RE = re.compile(
+    r"(\(|\)|\[|\]|\{|\}|=>|::|\.get\(|\.environ|os\.getenv|process\.env|config\.)"
+)
 
 
 def _fingerprint(value: str) -> str:
@@ -170,19 +335,23 @@ def _scan_private_key_block(text: str, rel: str, findings: list[dict]) -> None:
         if "PRIVATE KEY-----" not in line:
             continue
         payload = 0
-        for nxt in lines[i + 1:i + 8]:
+        for nxt in lines[i + 1 : i + 8]:
             s = nxt.strip()
             if not s or s.startswith("...") or "-----" in s:
                 continue
             if re.fullmatch(r"[A-Za-z0-9+/=]{32,}", s):
                 payload += 1
         if payload:
-            findings.append({
-                "kind": "secret", "path": rel, "line": i + 1,
-                "rule": "private_key_block",
-                "fingerprint": _fingerprint(lines[i].strip()),
-                "detail": "PRIVATE KEY header followed by base64 payload",
-            })
+            findings.append(
+                {
+                    "kind": "secret",
+                    "path": rel,
+                    "line": i + 1,
+                    "rule": "private_key_block",
+                    "fingerprint": _fingerprint(lines[i].strip()),
+                    "detail": "PRIVATE KEY header followed by base64 payload",
+                }
+            )
 
 
 def scan(root: Path, max_file_mb: float) -> dict:
@@ -199,12 +368,17 @@ def scan(root: Path, max_file_mb: float) -> dict:
         example_file = _is_example_file(path)
 
         # 1) forbidden names
-        if name in FORBIDDEN_NAMES or any(fnmatch.fnmatch(name, g) for g in FORBIDDEN_GLOBS):
-            if not example_file and name != ".env.example":
-                findings.append({
-                    "kind": "forbidden_path", "path": rel,
+        is_forbidden = name in FORBIDDEN_NAMES or any(
+            fnmatch.fnmatch(name, g) for g in FORBIDDEN_GLOBS
+        )
+        if is_forbidden and not example_file and name != ".env.example":
+            findings.append(
+                {
+                    "kind": "forbidden_path",
+                    "path": rel,
                     "detail": f"file name matches a forbidden pattern ({name})",
-                })
+                }
+            )
 
         # 2) size
         try:
@@ -212,14 +386,20 @@ def scan(root: Path, max_file_mb: float) -> dict:
         except OSError:
             continue
         if size > max_bytes:
-            findings.append({
-                "kind": "oversized_file", "path": rel,
-                "detail": f"{size / 1024 / 1024:.1f} MB exceeds limit {max_file_mb} MB",
-            })
+            findings.append(
+                {
+                    "kind": "oversized_file",
+                    "path": rel,
+                    "detail": f"{size / 1024 / 1024:.1f} MB exceeds limit {max_file_mb} MB",
+                }
+            )
 
         # 3) secrets
-        if path.suffix.lower() in TEXT_SUFFIXES or name.startswith(".") or name in {
-                "Dockerfile", "Makefile", "LICENSE", "README"}:
+        if (
+            path.suffix.lower() in TEXT_SUFFIXES
+            or name.startswith(".")
+            or name in {"Dockerfile", "Makefile", "LICENSE", "README"}
+        ):
             try:
                 if size > TEXT_FILE_SCAN_MAX_BYTES:
                     continue
@@ -239,11 +419,16 @@ def scan(root: Path, max_file_mb: float) -> dict:
                         value = m.group(1) if m.groups() else m.group(0)
                         if PLACEHOLDER_RE.search(value):
                             continue
-                        findings.append({
-                            "kind": "secret", "path": rel, "line": lineno,
-                            "rule": rule_name, "fingerprint": _fingerprint(value),
-                            "detail": f"{rule_name}: value matches a known credential format",
-                        })
+                        findings.append(
+                            {
+                                "kind": "secret",
+                                "path": rel,
+                                "line": lineno,
+                                "rule": rule_name,
+                                "fingerprint": _fingerprint(value),
+                                "detail": f"{rule_name}: value matches a known credential format",
+                            }
+                        )
                         break
 
                 for rule_name, rx in ASSIGN_RULES:
@@ -254,18 +439,28 @@ def scan(root: Path, max_file_mb: float) -> dict:
                             continue
                         if example_file and not TOKEN_RULES:
                             continue
-                        findings.append({
-                            "kind": "secret", "path": rel, "line": lineno,
-                            "rule": rule_name, "fingerprint": _fingerprint(value),
-                            "detail": f"{rule_name}: {reason}",
-                        })
+                        findings.append(
+                            {
+                                "kind": "secret",
+                                "path": rel,
+                                "line": lineno,
+                                "rule": rule_name,
+                                "fingerprint": _fingerprint(value),
+                                "detail": f"{rule_name}: {reason}",
+                            }
+                        )
                         break
 
     # 4) tracked files that match forbidden patterns
     if (root / ".git").exists():
         try:
-            out = subprocess.run(["git", "-C", str(root), "ls-files"],
-                                 capture_output=True, text=True, timeout=60, check=False).stdout
+            out = subprocess.run(
+                ["git", "-C", str(root), "ls-files"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            ).stdout
             for line in out.splitlines():
                 line = line.strip()
                 if not line:
@@ -274,11 +469,15 @@ def scan(root: Path, max_file_mb: float) -> dict:
                 if _is_example_file(p):
                     continue
                 if p.name in FORBIDDEN_NAMES or any(
-                        fnmatch.fnmatch(p.name, g) for g in FORBIDDEN_GLOBS):
-                    findings.append({
-                        "kind": "tracked_forbidden", "path": line,
-                        "detail": "file is tracked by git AND matches a forbidden pattern",
-                    })
+                    fnmatch.fnmatch(p.name, g) for g in FORBIDDEN_GLOBS
+                ):
+                    findings.append(
+                        {
+                            "kind": "tracked_forbidden",
+                            "path": line,
+                            "detail": "file is tracked by git AND matches a forbidden pattern",
+                        }
+                    )
         except (OSError, subprocess.SubprocessError):
             pass
 
@@ -318,7 +517,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"FOUND {len(report['findings'])} issue(s) in {root}")
     for f in report["findings"]:
         loc = f["path"] + (f":{f['line']}" if "line" in f else "")
-        extra = f"  [{f.get('rule', '')} {f.get('fingerprint', '')}]" if f["kind"] == "secret" else ""
+        extra = (
+            f"  [{f.get('rule', '')} {f.get('fingerprint', '')}]" if f["kind"] == "secret" else ""
+        )
         print(f"  {f['kind']:<18} {loc}\n      {f['detail']}{extra}")
     print("\nSecret values are never printed; only a sha256 fingerprint is shown.")
     return 1

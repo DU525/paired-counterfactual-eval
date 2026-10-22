@@ -19,10 +19,11 @@ from __future__ import annotations
 
 import hashlib
 import random
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Dict, List, Sequence, Tuple
+from typing import Any
 
-__all__ = ["ToyRingEnv", "ToyBaseline", "ToyCandidateModel", "ToyConfig"]
+__all__ = ["ToyBaseline", "ToyCandidateModel", "ToyConfig", "ToyRingEnv"]
 
 
 @dataclass(frozen=True)
@@ -43,7 +44,7 @@ class ToyConfig:
     n_actions: int = 4
     horizon: int = 4
     n_goals: int = 1
-    steps: Tuple[int, ...] = (1, 2, -1, 3)
+    steps: tuple[int, ...] = (1, 2, -1, 3)
     goal_offset: int = 5
     model_noise: float = 0.0
     model_score_jitter: float = 0.0
@@ -61,31 +62,29 @@ class ToyRingEnv:
         self._position = 0
         self._t = 0
         self._rng = random.Random(config.seed)
-        self._goals = {
-            (config.goal_offset + k) % config.n_states for k in range(config.n_goals)
-        }
+        self._goals = {(config.goal_offset + k) % config.n_states for k in range(config.n_goals)}
 
     # -- state ------------------------------------------------------------
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         return {
             "position": self._position,
             "t": self._t,
             "rng": self._rng.getstate(),
         }
 
-    def restore(self, handle: Dict[str, Any]) -> None:
+    def restore(self, handle: dict[str, Any]) -> None:
         self._position = handle["position"]
         self._t = handle["t"]
         self._rng = random.Random()
         self._rng.setstate(handle["rng"])
 
-    def reset(self, seed: int) -> Dict[str, Any]:
+    def reset(self, seed: int) -> dict[str, Any]:
         self._rng = random.Random(seed)
         self._position = self._rng.randrange(self.config.n_states)
         self._t = 0
         return self.snapshot()
 
-    def observe(self) -> Dict[str, int]:
+    def observe(self) -> dict[str, int]:
         return {"position": self._position, "t": self._t}
 
     # -- dynamics ---------------------------------------------------------
@@ -103,7 +102,7 @@ class ToyRingEnv:
 class _ToyStep:
     reward: float
     terminal: bool
-    observation: Dict[str, int]
+    observation: dict[str, int]
 
 
 class ToyBaseline:
@@ -112,7 +111,7 @@ class ToyBaseline:
     def __init__(self, action: int = 0) -> None:
         self.action = action
 
-    def act(self, observation: Dict[str, int]) -> int:
+    def act(self, observation: dict[str, int]) -> int:
         return self.action
 
 
@@ -134,20 +133,19 @@ class ToyCandidateModel:
         self.config = config
         self.baseline_action = baseline_action
 
-    def candidates(self, observation: Dict[str, int]) -> List[int]:
+    def candidates(self, observation: dict[str, int]) -> list[int]:
         return list(range(self.config.n_actions))
 
-    def _hash_unit(self, observation: Dict[str, int], salt: str) -> float:
+    def _hash_unit(self, observation: dict[str, int], salt: str) -> float:
         key = f"{self.config.seed}:{salt}:{observation['position']}:{observation['t']}"
         digest = hashlib.sha256(key.encode("utf-8")).hexdigest()
         return int(digest[:16], 16) / float(1 << 64)
 
-    def _true_values(self, observation: Dict[str, int]) -> List[float]:
+    def _true_values(self, observation: dict[str, int]) -> list[float]:
         """Closed-form value of starting with each action (goal hits in H steps)."""
         position = observation["position"]
         goals = {
-            (self.config.goal_offset + k) % self.config.n_states
-            for k in range(self.config.n_goals)
+            (self.config.goal_offset + k) % self.config.n_states for k in range(self.config.n_goals)
         }
         values = []
         for action in range(self.config.n_actions):
@@ -163,7 +161,7 @@ class ToyCandidateModel:
             values.append(hits / self.config.horizon)
         return values
 
-    def score(self, observation: Dict[str, int], actions: Sequence[int]) -> List[float]:
+    def score(self, observation: dict[str, int], actions: Sequence[int]) -> list[float]:
         values = self._true_values(observation)
         jitter = self.config.model_score_jitter
         return [
@@ -171,9 +169,12 @@ class ToyCandidateModel:
             for i, value in enumerate(values)
         ]
 
-    def select(self, observation: Dict[str, int]) -> int:
+    def select(self, observation: dict[str, int]) -> int:
         values = self._true_values(observation)
-        if self.config.model_noise > 0.0 and self._hash_unit(observation, "gate") < self.config.model_noise:
+        if (
+            self.config.model_noise > 0.0
+            and self._hash_unit(observation, "gate") < self.config.model_noise
+        ):
             choice = int(self._hash_unit(observation, "choice") * len(values)) % len(values)
             return choice
         return max(range(len(values)), key=lambda i: values[i])

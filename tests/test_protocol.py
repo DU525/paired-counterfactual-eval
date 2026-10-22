@@ -79,6 +79,7 @@ def test_bootstrap_resamples_over_units_not_branches():
     only = bootstrap_ci([0.5], resamples=100)
     assert only.low == only.high == 0.5
 
+
 def test_inconclusive_config_is_inconclusive():
     spec, env, model, baseline = _build("toy_inconclusive.yaml")
     results = [evaluate_origin(env, model, baseline, spec, int(s)) for s in spec.seeds]

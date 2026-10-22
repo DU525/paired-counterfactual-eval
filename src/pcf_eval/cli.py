@@ -14,7 +14,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from pcf_eval.aggregate import aggregate
 from pcf_eval.core.transaction import BundleTransaction, verify_committed_bundle
@@ -22,7 +22,7 @@ from pcf_eval.protocol import EvalSpec, evaluate_origin, load_backend, load_spec
 from pcf_eval.toy import ToyBaseline, ToyCandidateModel, ToyConfig, ToyRingEnv
 
 
-def _build_toy(config: Dict[str, Any]) -> "tuple[ToyRingEnv, ToyCandidateModel, ToyBaseline]":
+def _build_toy(config: dict[str, Any]) -> tuple[ToyRingEnv, ToyCandidateModel, ToyBaseline]:
     toy_cfg = ToyConfig(
         n_states=int(config.get("n_states", 12)),
         n_actions=int(config.get("n_actions", 4)),
@@ -50,7 +50,7 @@ def _run(args: argparse.Namespace) -> int:
         print(f"error: unknown backend {backend!r}", file=sys.stderr)
         return 2
 
-    results: List[Any] = []
+    results: list[Any] = []
     for seed in spec.seeds:
         results.append(evaluate_origin(env, model, baseline, spec, int(seed)))
 
@@ -67,7 +67,9 @@ def _run(args: argparse.Namespace) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     run_id = out_dir.name
     tx = BundleTransaction(out_dir, run_id)
-    tx.write_bytes("results.json", json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"))
+    tx.write_bytes(
+        "results.json", json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8")
+    )
     tx.write_bytes(
         "summary.md",
         _render_markdown(spec, summary).encode("utf-8"),
@@ -76,12 +78,18 @@ def _run(args: argparse.Namespace) -> int:
 
     print(f"run_id        : {run_id}")
     print(f"origins      : {summary.n_origins}  candidates/origin: {summary.n_candidates}")
-    print(f"opportunity  : {summary.opportunity.mean:+.6f}  "
-          f"[{summary.opportunity.low:+.6f}, {summary.opportunity.high:+.6f}]")
-    print(f"ranking regret:{summary.ranking_regret.mean:+.6f}  "
-          f"[{summary.ranking_regret.low:+.6f}, {summary.ranking_regret.high:+.6f}]")
-    print(f"value gain   : {summary.value_gain.mean:+.6f}  "
-          f"[{summary.value_gain.low:+.6f}, {summary.value_gain.high:+.6f}]")
+    print(
+        f"opportunity  : {summary.opportunity.mean:+.6f}  "
+        f"[{summary.opportunity.low:+.6f}, {summary.opportunity.high:+.6f}]"
+    )
+    print(
+        f"ranking regret:{summary.ranking_regret.mean:+.6f}  "
+        f"[{summary.ranking_regret.low:+.6f}, {summary.ranking_regret.high:+.6f}]"
+    )
+    print(
+        f"value gain   : {summary.value_gain.mean:+.6f}  "
+        f"[{summary.value_gain.low:+.6f}, {summary.value_gain.high:+.6f}]"
+    )
     print(f"top-1 rate   : {summary.top1_rate.mean:.3f} (random {summary.random_top1_rate:.3f})")
     print(f"verdict      : {summary.verdict}  mechanism: {summary.mechanism}")
     print(f"bundle       : {tx.root}")
@@ -125,7 +133,7 @@ def _verify(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: "List[str] | None" = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="pcf-eval", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 

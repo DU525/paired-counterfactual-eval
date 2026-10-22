@@ -1,0 +1,41 @@
+# Local hooks are the ones that matter for this repository: they run the same
+# checks as CI, so a failure is caught before the push rather than after.
+#
+#   pre-commit install
+#   pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^reference/.*\.json$
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.7
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: repo-hygiene
+        name: repository hygiene scan (secrets / oversized files)
+        entry: python scripts/scan_repo.py .
+        language: system
+        pass_filenames: false
+      - id: protocol-tests
+        name: protocol tests (no simulator, seconds)
+        entry: python -m pytest -q
+        language: system
+        pass_filenames: false

@@ -13,9 +13,10 @@ integration surface small and does not force a particular inheritance model.
 
 from __future__ import annotations
 
-from typing import Any, List, Protocol, Sequence, runtime_checkable
+from collections.abc import Sequence
+from typing import Any, Protocol, runtime_checkable
 
-__all__ = ["StepResult", "ForkableEnv", "CandidateModel", "BaselinePolicy", "CostModel"]
+__all__ = ["BaselinePolicy", "CandidateModel", "CostModel", "ForkableEnv", "StepResult"]
 
 
 class StepResult(Protocol):
@@ -55,7 +56,7 @@ class CandidateModel(Protocol):
     def candidates(self, observation: Any) -> Sequence[Any]:
         """Return the candidate actions for this state, in a fixed order."""
 
-    def score(self, observation: Any, actions: Sequence[Any]) -> List[float]:
+    def score(self, observation: Any, actions: Sequence[Any]) -> list[float]:
         """Score candidates; higher is better."""
 
     def select(self, observation: Any) -> int:

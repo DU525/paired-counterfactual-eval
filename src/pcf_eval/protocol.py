@@ -17,13 +17,21 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass, field, asdict
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 from pcf_eval.metrics import CoverageReport, RankReport, decompose, rank_report
 
-__all__ = ["EvalSpec", "OriginResult", "load_spec", "load_backend", "evaluate_origin", "spec_digest"]
+__all__ = [
+    "EvalSpec",
+    "OriginResult",
+    "evaluate_origin",
+    "load_backend",
+    "load_spec",
+    "spec_digest",
+]
 
 
 @dataclass(frozen=True)
@@ -46,7 +54,7 @@ class EvalSpec:
         if not self.seeds:
             raise ValueError("at least one seed is required")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
     def digest(self) -> str:
@@ -65,15 +73,15 @@ class OriginResult:
 
     seed: int
     n_candidates: int
-    values: List[float]
-    steps_survived: List[int]
+    values: list[float]
+    steps_survived: list[int]
     selected_index: int
     baseline_index: int
-    predicted_scores: Optional[List[float]] = None
+    predicted_scores: list[float] | None = None
     coverage: CoverageReport = None  # type: ignore[assignment]
     ranking: RankReport = None  # type: ignore[assignment]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "seed": self.seed,
             "n_candidates": self.n_candidates,
@@ -112,8 +120,8 @@ def evaluate_origin(
     if spec.baseline_index >= len(candidates):
         raise IndexError("baseline_index outside the candidate set")
 
-    values: List[float] = []
-    survived: List[int] = []
+    values: list[float] = []
+    survived: list[int] = []
 
     for action in candidates:
         env.restore(handle)
@@ -136,7 +144,7 @@ def evaluate_origin(
     scores = None
     try:
         scores = [float(s) for s in model.score(observation, candidates)]
-    except Exception:  # noqa: BLE001 - scoring is optional for the decomposition
+    except Exception:
         scores = None
     ranking = rank_report(values, selected_index, scores)
 
@@ -153,7 +161,7 @@ def evaluate_origin(
     )
 
 
-def load_spec(path: "str | Path") -> EvalSpec:
+def load_spec(path: str | Path) -> EvalSpec:
     """Load a frozen spec from YAML or JSON.
 
     The file may contain two top-level blocks:
@@ -168,10 +176,7 @@ def load_spec(path: "str | Path") -> EvalSpec:
 
     path = Path(path)
     text = path.read_text(encoding="utf-8")
-    if path.suffix.lower() in (".yaml", ".yml"):
-        data = yaml.safe_load(text)
-    else:
-        data = json.loads(text)
+    data = yaml.safe_load(text) if path.suffix.lower() in (".yaml", ".yml") else json.loads(text)
     if not isinstance(data, dict):
         raise ValueError("spec file must contain a mapping")
     if "spec" in data:
@@ -189,7 +194,7 @@ def load_spec(path: "str | Path") -> EvalSpec:
     return EvalSpec(**data)
 
 
-def load_backend(path: "str | Path") -> "dict[str, object]":
+def load_backend(path: str | Path) -> dict[str, object]:
     """Load the backend block of a configuration file."""
     import yaml
 

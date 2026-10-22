@@ -28,19 +28,19 @@ Sign convention: all quantities are "higher is better for the world model".
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, asdict
-from typing import Dict, List, Sequence, Tuple
+from collections.abc import Sequence
+from dataclasses import asdict, dataclass
 
 __all__ = [
+    "CostGate",
     "CoverageReport",
     "RankReport",
-    "CostGate",
+    "cost_gate",
     "decompose",
     "oracle_coverage",
+    "rank_report",
     "ranking_regret",
     "value_gain",
-    "rank_report",
-    "cost_gate",
 ]
 
 
@@ -62,7 +62,7 @@ class CoverageReport:
     top1_hit: bool
     random_top1_rate: float
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
@@ -77,7 +77,7 @@ class RankReport:
     best_index: int
     selected_index: int
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
@@ -97,11 +97,11 @@ class CostGate:
     lam: float
     net: float
 
-    def to_dict(self) -> Dict[str, object]:
+    def to_dict(self) -> dict[str, object]:
         return asdict(self)
 
 
-def _check(values: Sequence[float]) -> List[float]:
+def _check(values: Sequence[float]) -> list[float]:
     vals = [float(v) for v in values]
     if len(vals) < 2:
         raise ValueError("need at least two candidates")

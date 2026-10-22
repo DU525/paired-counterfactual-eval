@@ -16,12 +16,13 @@ Design contract
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
 import re
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable
 
 _SAFE_RUN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$")
 _RESERVED = {"RUN_STATE.json", "MANIFEST.json"}
@@ -29,7 +30,9 @@ _RESERVED = {"RUN_STATE.json", "MANIFEST.json"}
 
 def _canonical_json(value: object) -> bytes:
     return (
-        json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+        json.dumps(
+            value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+        )
         + "\n"
     ).encode("utf-8")
 
@@ -64,10 +67,8 @@ def _atomic_replace(path: Path, data: bytes) -> None:
         os.replace(temp, path)
         _fsync_dir(path.parent)
     finally:
-        try:
+        with contextlib.suppress(FileNotFoundError):
             temp.unlink()
-        except FileNotFoundError:
-            pass
 
 
 class BundleTransaction:
@@ -75,9 +76,9 @@ class BundleTransaction:
 
     def __init__(
         self,
-        root: "str | Path",
+        root: str | Path,
         run_id: str,
-        fault_hook: Optional[Callable[[str, Optional[str]], None]] = None,
+        fault_hook: Callable[[str, str | None], None] | None = None,
     ) -> None:
         if not _SAFE_RUN.fullmatch(run_id):
             raise ValueError("run_id must be a safe, bounded identifier")
@@ -85,10 +86,10 @@ class BundleTransaction:
         self.root.mkdir(parents=True, exist_ok=False)
         self.run_id = run_id
         self._fault_hook = fault_hook
-        self._entries: "dict[str, dict[str, object]]" = {}
+        self._entries: dict[str, dict[str, object]] = {}
         self._write_state("INCOMPLETE", reason="transaction_open")
 
-    def _hook(self, stage: str, name: Optional[str] = None) -> None:
+    def _hook(self, stage: str, name: str | None = None) -> None:
         if self._fault_hook is not None:
             self._fault_hook(stage, name)
 
@@ -98,7 +99,7 @@ class BundleTransaction:
             _canonical_json({"run_id": self.run_id, "status": status, **extra}),
         )
 
-    def write_bytes(self, name: str, payload: bytes) -> "dict[str, object]":
+    def write_bytes(self, name: str, payload: bytes) -> dict[str, object]:
         rel = Path(name)
         if rel.is_absolute() or not rel.parts or any(p in ("", ".", "..") for p in rel.parts):
             raise ValueError("artifact name must be a safe relative path")
@@ -146,7 +147,7 @@ class BundleTransaction:
         return self.root
 
 
-def verify_committed_bundle(root: "str | Path") -> "dict[str, object]":
+def verify_committed_bundle(root: str | Path) -> dict[str, object]:
     """Re-verify a committed bundle. Raises on any inconsistency."""
     root = Path(root).resolve()
     state = json.loads((root / "RUN_STATE.json").read_text(encoding="utf-8"))
@@ -159,7 +160,7 @@ def verify_committed_bundle(root: "str | Path") -> "dict[str, object]":
     manifest = json.loads(manifest_bytes)
     if manifest.get("status") != "COMPLETE" or manifest.get("run_id") != state.get("run_id"):
         raise RuntimeError("manifest identity/status mismatch")
-    seen: "set[str]" = set()
+    seen: set[str] = set()
     for item in manifest.get("artifacts", []):
         name = str(item["name"])
         rel = Path(name)
