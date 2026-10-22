@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a capability or a change in behaviour
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: Describe the task, not the implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like the package to do instead?
+    validations:
+      required: true
+  - type: textarea
+    id: protocol-impact
+    attributes:
+      label: Does this change what is measured?
+      description: >
+        If the change affects the metric definitions, the origin sampling, or
+        the statistical unit, it is a protocol change and needs a version bump
+        of the spec format plus a CHANGELOG entry.
+    validations:
+      required: true

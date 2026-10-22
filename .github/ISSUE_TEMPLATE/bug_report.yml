@@ -1,0 +1,50 @@
+name: Bug report
+description: Something behaves differently from what the documentation says
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please do **not** report
+        scientific disagreements here — those belong in a discussion or an issue
+        with a concrete experiment attached.
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      placeholder: 3.11.4
+    validations:
+      required: true
+  - type: input
+    id: pcf-eval-version
+    attributes:
+      label: pcf-eval version
+      placeholder: 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: The actual behaviour, including the full traceback if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: minimal-repro
+    attributes:
+      label: Minimal reproduction
+      description: A script or command that shows the problem.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I ran `python scripts/scan_repo.py .` and it reports no secret in what I am sharing.
+          required: false

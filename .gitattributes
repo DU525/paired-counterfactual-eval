@@ -1,0 +1,35 @@
+# Default: treat text as text, strip trailing whitespace only in markdown
+* text=auto eol=lf
+
+*.py    text eol=lf diff=python
+*.md    text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.toml  text eol=lf
+*.json  text eol=lf
+*.txt   text eol=lf
+*.cfg   text eol=lf
+*.sh    text eol=lf
+*.ps1   text eol=crlf
+*.bat   text eol=crlf
+
+# Binary assets: never diff, never CRLF-translate
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.npz   binary
+*.npy   binary
+*.pt    binary
+*.pth   binary
+*.safetensors binary
+*.onnx  binary
+
+# Large binaries are not tracked at all; publish via Releases instead.
+*.zip   binary -diff
+*.tar   binary -diff
+*.tar.gz binary -diff
+*.tgz   binary -diff

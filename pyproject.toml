@@ -1,0 +1,83 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pcf-eval"
+version = "0.1.0"
+description = "Paired-counterfactual evaluation for world models: does the model add value over a strong baseline, and if not, is the bottleneck candidate coverage or ranking?"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Jinbo Du", email = "dujinbo007@163.com" }]
+keywords = [
+  "world-model",
+  "model-based-reinforcement-learning",
+  "causal-evaluation",
+  "benchmark",
+  "embodied-ai",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+  "numpy>=1.23",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "ruff>=0.5",
+  "mypy>=1.8",
+]
+# Optional: only needed when driving a real simulator.
+sim = [
+  "gymnasium>=0.29",
+  "dm-control>=1.0.14",
+]
+
+[project.urls]
+Homepage = "https://github.com/DU525/paired-counterfactual-eval"
+Repository = "https://github.com/DU525/paired-counterfactual-eval"
+Issues = "https://github.com/DU525/paired-counterfactual-eval/issues"
+
+[project.scripts]
+pcf-eval = "pcf_eval.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pcf_eval"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q --strict-markers"
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101"]
+
+[tool.mypy]
+python_version = "3.9"
+packages = ["pcf_eval"]
+warn_unused_ignores = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.coverage.run]
+source = ["src/pcf_eval"]

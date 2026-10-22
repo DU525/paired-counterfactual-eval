@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or discussion
+    url: https://github.com/DU525/paired-counterfactual-eval/discussions
+    about: Ask a usage question or discuss a measurement design.
